@@ -81,10 +81,7 @@ def dist_3d(p1, p2):
 
 
 def extract_features_from_yolo_keypoints(kpts):
-    """
-    kpts: [17, 3] ili [17,2] -> [NUM_FEATURES]
-    Mora da odgovara onome što je korišćeno u treningu.
-    """
+    
 
     lm = {}
     for name, idx in joint_index.items():
@@ -118,7 +115,6 @@ def extract_features_from_yolo_keypoints(kpts):
     angles.append(angle_3d(lm["right_wrist"], lm["right_elbow"],    lm["right_shoulder"]))
     angles.append(angle_3d(lm["left_wrist"],  lm["left_elbow"],     lm["left_shoulder"]))
 
-    # 3) distance (isti parovi)
     dists = []
     dists.append(dist_3d(lm["left_shoulder"],  lm["left_wrist"]))
     dists.append(dist_3d(lm["right_shoulder"], lm["right_wrist"]))
@@ -144,8 +140,8 @@ def predict_from_buffer(buffer):
     if len(buffer) < SEQ_LEN:
         return None, 0.0
 
-    seq = np.array(buffer, dtype=np.float32)   # [SEQ_LEN, NUM_FEATURES]
-    seq = np.expand_dims(seq, axis=0)          # [1, SEQ_LEN, NUM_FEATURES]
+    seq = np.array(buffer, dtype=np.float32)   
+    seq = np.expand_dims(seq, axis=0)          
 
     probs = model.predict(seq, verbose=0)[0]
     idx = int(np.argmax(probs))
@@ -174,7 +170,6 @@ def compute_squat_angle(kpts_2d):
 
 
 def compute_situp_angle(kpts_2d):
-    """Ugao u kuku: shoulder–hip–knee."""
     shoulder = get_joint_2d(kpts_2d, "right_shoulder")
     hip      = get_joint_2d(kpts_2d, "right_hip")
     knee     = get_joint_2d(kpts_2d, "right_knee")
@@ -182,7 +177,6 @@ def compute_situp_angle(kpts_2d):
 
 
 def compute_jj_metric(kpts_2d):
-    """Normirana udaljenost između članaka (ankles)  / širina kukova."""
     la = get_joint_2d(kpts_2d, "left_ankle")
     ra = get_joint_2d(kpts_2d, "right_ankle")
     lh = get_joint_2d(kpts_2d, "left_hip")
@@ -196,7 +190,6 @@ def compute_jj_metric(kpts_2d):
 
 
 def compute_pullup_metric(kpts_2d):
-    """Normirana vertikalna udaljenost shoulder–wrist (što manje -> više podignut)."""
     rs = get_joint_2d(kpts_2d, "right_shoulder")
     rw = get_joint_2d(kpts_2d, "right_wrist")
     rh = get_joint_2d(kpts_2d, "right_hip")
@@ -208,41 +201,34 @@ def compute_pullup_metric(kpts_2d):
     return float(vert / scale)
 
 
-# ---------------------------------------------------
-# 3) TKINTER APLIKACIJA
-# ---------------------------------------------------
-
 class ExerciseApp:
     def __init__(self, root):
         self.root = root
         self.root.title("Exercise Recognition")
 
         self.cap = None
-        self.source_type = None  # "camera" ili "video"
+        self.source_type = None  
         self.running = False
 
-        # LSTM buffer
+       
         self.feat_buffer = deque(maxlen=SEQ_LEN)
 
-        # stanja
         self.last_label = None
         self.last_conf = 0.0
 
-        # reps po vežbi
         self.pushup_reps = 0
         self.squat_reps = 0
         self.situp_reps = 0
         self.jj_reps = 0
         self.pullup_reps = 0
 
-        # states za faze pokreta
         self.pushup_state = "up"
         self.squat_state = "up"
         self.situp_state = "down"
         self.jj_state = "closed"
         self.pullup_state = "down"
 
-        # pragovi
+        
         self.MIN_CONF_FOR_REP = 0.6
 
         self.PUSHUP_UP_THR = 160.0
@@ -254,35 +240,35 @@ class ExerciseApp:
         self.SITUP_DOWN_THR = 150.0
         self.SITUP_UP_THR = 110.0
 
-        # jumping jack – normirana dist. članaka
+        
         self.JJ_CLOSED_THR = 1.0
         self.JJ_OPEN_THR = 1.7
 
-        # pull_up – normirana udaljenost shoulder–wrist
-        self.PU_DOWN_THR = 1.0   # ruke dole (veća udaljenost)
-        self.PU_UP_THR = 0.6     # telo gore (manja udaljenost)
+        
+        self.PU_DOWN_THR = 1.0   
+        self.PU_UP_THR = 0.6     
 
         self._build_ui()
 
-    # ---------------- UI ----------------
+ 
 
     def _build_ui(self):
-        # glavni okvir
+        
         main_frame = ttk.Frame(self.root)
         main_frame.pack(fill="both", expand=True, padx=10, pady=10)
 
-        # levi deo: video
+     
         video_frame = ttk.Frame(main_frame)
         video_frame.grid(row=0, column=0, rowspan=2, sticky="nsew", padx=(0, 10))
 
         self.video_label = ttk.Label(video_frame)
         self.video_label.pack()
 
-        # desni deo: info box-ovi
+       
         info_frame = ttk.Frame(main_frame)
         info_frame.grid(row=0, column=1, sticky="nsew")
 
-        # Box 1 – tip vežbe + verovatnoća
+       
         box1 = ttk.LabelFrame(info_frame, text="Vežba")
         box1.pack(fill="x", pady=5)
 
@@ -299,7 +285,6 @@ class ExerciseApp:
         ttk.Label(row2, text="Verovatnoća:").pack(side="left")
         ttk.Label(row2, textvariable=self.exercise_conf_var, foreground="green").pack(side="left", padx=5)
 
-        # Box 2 – gornji deo tela (push_up, pull_up, situp)
         box2 = ttk.LabelFrame(info_frame, text="Ponavljanja (gornji deo)")
         box2.pack(fill="x", pady=5)
 
@@ -322,7 +307,6 @@ class ExerciseApp:
         ttk.Label(rowsit, text="situp:").pack(side="left")
         ttk.Label(rowsit, textvariable=self.situp_reps_var, foreground="purple").pack(side="left", padx=5)
 
-        # Box 3 – donji deo (squat, jumping_jack)
         box3 = ttk.LabelFrame(info_frame, text="Ponavljanja (donji deo)")
         box3.pack(fill="x", pady=5)
 
@@ -339,7 +323,7 @@ class ExerciseApp:
         ttk.Label(rowjj, text="jumping_jack:").pack(side="left")
         ttk.Label(rowjj, textvariable=self.jj_reps_var, foreground="purple").pack(side="left", padx=5)
 
-        # Dugmad (donji deo)
+   
         btn_frame = ttk.Frame(main_frame)
         btn_frame.grid(row=1, column=1, sticky="ew", pady=(10, 0))
 
@@ -356,7 +340,6 @@ class ExerciseApp:
         main_frame.columnconfigure(1, weight=1)
         main_frame.rowconfigure(0, weight=1)
 
-    # ---------------- Kontrole izvora ----------------
 
     def reset_state(self):
         self.feat_buffer.clear()
@@ -387,7 +370,7 @@ class ExerciseApp:
         print("[GUI] Kliknuto dugme Kamera")
         self.stop()
 
-        # CAP_DSHOW često pomaže na Windowsu
+        
         self.cap = cv2.VideoCapture(0, cv2.CAP_DSHOW)
         if not self.cap.isOpened():
             messagebox.showerror("Greška", "Ne mogu da otvorim kameru (0).")
@@ -425,8 +408,7 @@ class ExerciseApp:
             self.cap.release()
             self.cap = None
 
-    # ---------------- Glavna petlja za frame-ove ----------------
-
+    
     def update_frame(self):
         if not self.running or self.cap is None:
             return
@@ -440,11 +422,11 @@ class ExerciseApp:
                 self.root.after(200, self.update_frame)
             return
 
-        # YOLO inference + feature extraction
+        
         try:
             results = yolo_model(frame, verbose=False)
             if len(results) > 0 and len(results[0].keypoints) > 0:
-                kpts_xy = results[0].keypoints.xy.cpu().numpy()  # [num_persons, 17, 2]
+                kpts_xy = results[0].keypoints.xy.cpu().numpy()  
                 person_kpts = kpts_xy[0]
 
                 kpts_full = np.concatenate(
@@ -455,15 +437,15 @@ class ExerciseApp:
                 feat = extract_features_from_yolo_keypoints(kpts_full)
                 self.feat_buffer.append(feat)
 
-                # predikcija
+                
                 label, conf = predict_from_buffer(self.feat_buffer)
                 if label is not None:
                     self.last_label = label
                     self.last_conf = conf
 
-                # REP COUNTING – sve vežbe
+                
                 if self.last_conf >= self.MIN_CONF_FOR_REP:
-                    # push_up
+                    
                     if self.last_label == "push_up":
                         ang = compute_pushup_angle(person_kpts)
                         if self.pushup_state == "up" and ang < self.PUSHUP_DOWN_THR:
@@ -472,7 +454,7 @@ class ExerciseApp:
                             self.pushup_state = "up"
                             self.pushup_reps += 1
 
-                    # squat
+                   
                     if self.last_label == "squat":
                         ang = compute_squat_angle(person_kpts)
                         if self.squat_state == "up" and ang < self.SQUAT_DOWN_THR:
@@ -481,7 +463,6 @@ class ExerciseApp:
                             self.squat_state = "up"
                             self.squat_reps += 1
 
-                    # situp
                     if self.last_label == "situp":
                         ang = compute_situp_angle(person_kpts)
                         if self.situp_state == "down" and ang < self.SITUP_UP_THR:
@@ -490,7 +471,7 @@ class ExerciseApp:
                             self.situp_state = "down"
                             self.situp_reps += 1
 
-                    # jumping_jack
+                    
                     if self.last_label == "jumping_jack":
                         m = compute_jj_metric(person_kpts)
                         if self.jj_state == "closed" and m > self.JJ_OPEN_THR:
@@ -499,7 +480,7 @@ class ExerciseApp:
                             self.jj_state = "closed"
                             self.jj_reps += 1
 
-                    # pull_up
+                    
                     if self.last_label == "pull_up":
                         m = compute_pullup_metric(person_kpts)
                         if self.pullup_state == "down" and m < self.PU_UP_THR:
@@ -515,7 +496,7 @@ class ExerciseApp:
             print("[GUI] Greška u YOLO/feature delu:", e)
             annotated = frame
 
-        # update tekst u box-ovima
+        
         if self.last_label is not None and self.last_conf >= 0.4:
             self.exercise_name_var.set(self.last_label)
             self.exercise_conf_var.set(f"{self.last_conf*100:.1f}%")

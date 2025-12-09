@@ -51,10 +51,7 @@ joint_index = {name: i for i, name in enumerate(yolo_joints)}
 
 
 def angle_3d(a, b, c):
-    """
-    a, b, c: (x, y, z)
-    ugao u tački b u stepenima
-    """
+    
     a = np.array(a, dtype=np.float32)
     b = np.array(b, dtype=np.float32)
     c = np.array(c, dtype=np.float32)
@@ -71,7 +68,7 @@ def angle_3d(a, b, c):
 
 
 def angle_2d(a_xy, b_xy, c_xy):
-    """Ista logika, ali samo (x,y)."""
+  
     a = np.array([a_xy[0], a_xy[1], 0.0], dtype=np.float32)
     b = np.array([b_xy[0], b_xy[1], 0.0], dtype=np.float32)
     c = np.array([c_xy[0], c_xy[1], 0.0], dtype=np.float32)
@@ -85,11 +82,7 @@ def dist_3d(p1, p2):
 
 
 def extract_features_from_yolo_keypoints(kpts):
-    """
-    kpts: np.array shape (17, 3) ili (17, 2), [x, y, conf]
-    vraća: feature vektor dužine NUM_FEATURES
-           (isti raspored kao u treningu)
-    """
+    
    
     lm = {}
     for name, idx in joint_index.items():
@@ -149,9 +142,7 @@ def extract_features_from_yolo_keypoints(kpts):
 
 
 def predict_from_buffer(buffer):
-    """
-    buffer: deque sa poslednjih SEQ_LEN feature vektora
-    """
+   
     if len(buffer) < SEQ_LEN:
         return None, 0.0
 
@@ -173,7 +164,6 @@ def get_joint_2d(kpts, name):
 
 
 def compute_pushup_angle(kpts_2d):
-    """Ugao u desnom laktu: shoulder–elbow–wrist."""
     shoulder = get_joint_2d(kpts_2d, "right_shoulder")
     elbow    = get_joint_2d(kpts_2d, "right_elbow")
     wrist    = get_joint_2d(kpts_2d, "right_wrist")
@@ -181,7 +171,6 @@ def compute_pushup_angle(kpts_2d):
 
 
 def compute_squat_angle(kpts_2d):
-    """Ugao u desnom kolenu: hip–knee–ankle."""
     hip   = get_joint_2d(kpts_2d, "right_hip")
     knee  = get_joint_2d(kpts_2d, "right_knee")
     ankle = get_joint_2d(kpts_2d, "right_ankle")
